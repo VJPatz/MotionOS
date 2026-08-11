@@ -1,0 +1,26 @@
+# PlatformIO build artifacts
+.pio/
+.pioenvs/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+
+# Credentials — NEVER commit Config.h, copy from Config.example.h
+include/Config.h
+Config.h
+
+# macOS / Windows junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs / generated
+*.log
+*.csv

@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MotionOS">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<title>MotionOS</title>
+<style>
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+
+/* ── Theme variables ──────────────────────────────────────────────────────── */
+:root,[data-theme="dark"]{
+  --bg:#0a0e1a; --s1:#111827; --s2:#1a2234; --s3:#1e2a3d;
+  --border:#1f3454; --border2:#243350;
+  --txt:#e2e8f0; --txt2:#cbd5e1; --mut:#64748b;
+  --a1:#3b82f6; --a1h:#2563eb; --a1d:rgba(59,130,246,.18);
+  --cyan:#06b6d4; --ylw:#f59e0b; --ylwd:rgba(245,158,11,.18);
+  --err:#ef4444; --ok:#22c55e;
+  --nav-h:56px; --sidebar-w:220px;
+}
+[data-theme="light"]{
+  --bg:#f0f4f8; --s1:#ffffff; --s2:#f8fafc; --s3:#e2e8f0;
+  --border:#dde3ec; --border2:#c8d3e0;
+  --txt:#0f172a; --txt2:#334155; --mut:#64748b;
+  --a1:#2563eb; --a1h:#1d4ed8; --a1d:rgba(37,99,235,.12);
+  --cyan:#0891b2; --ylw:#d97706; --ylwd:rgba(217,119,6,.12);
+  --err:#dc2626; --ok:#16a34a;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-size:14px;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* top nav */
+#topnav{height:var(--nav-h);background:var(--s1);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 .75rem;gap:.5rem;flex-shrink:0;z-index:100;position:relative}
+#menu-btn{background:none;border:none;cursor:pointer;color:var(--txt);padding:.35rem;
+  border-radius:6px;display:flex;align-items:center;font-size:1.3rem;line-height:1}
+#topnav-title{flex:1;font-size:.95rem;font-weight:700;letter-spacing:.01em;padding-left:.25rem}
+#topnav-actions{display:flex;gap:.5rem;align-items:center}
+.icon-btn{background:none;border:none;cursor:pointer;color:var(--mut);padding:.35rem .5rem;
+  border-radius:6px;font-size:.8rem;transition:color .15s,background .15s;line-height:1.4;
+  white-space:nowrap}
+.icon-btn:active,.icon-btn:hover{color:var(--txt);background:var(--s3)}
+.rec-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--err);
+  margin-right:4px;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* content + sidebar */
+#content-area{display:flex;flex:1;overflow:hidden}
+#sidebar{position:fixed;top:var(--nav-h);left:0;width:var(--sidebar-w);bottom:0;
+  background:var(--s1);border-right:1px solid var(--border);z-index:200;
+  transform:translateX(-100%);transition:transform .2s ease;overflow-y:auto;
+  padding-bottom:env(safe-area-inset-bottom)}
+#sidebar.open{transform:translateX(0)}
+#overlay{position:fixed;inset:0;top:var(--nav-h);background:rgba(0,0,0,.45);z-index:190;
+  opacity:0;pointer-events:none;transition:opacity .2s}
+#overlay.show{opacity:1;pointer-events:auto}
+
+.sidebar-section{padding:.5rem .75rem .25rem;color:var(--mut);font-size:.65rem;text-transform:uppercase;letter-spacing:.1em}
+.nav-item{display:flex;align-items:center;gap:.75rem;padding:.65rem 1rem;cursor:pointer;
+  border-radius:8px;margin:.1rem .5rem;font-size:.88rem;color:var(--txt2);transition:background .12s,color .12s}
+.nav-item:hover,.nav-item.active{background:var(--a1d);color:var(--a1)}
+.nav-item .ni-icon{font-size:1rem;width:1.1rem;text-align:center}
+.nav-badge{margin-left:auto;background:var(--s3);border:1px solid var(--border);color:var(--mut);
+  font-size:.65rem;padding:.1rem .4rem;border-radius:4px}
+.nav-badge.mode-ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.nav-badge.mode-err{background:var(--err);color:#fff;border-color:var(--err)}
+.nav-badge.mode-run{background:var(--cyan);color:#000;border-color:var(--cyan)}
+
+/* main pages */
+#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  padding-bottom:calc(60px + env(safe-area-inset-bottom));
+  touch-action:pan-x pinch-zoom}
+
+/* ── Right-edge scroll strip ──────────────────────────────────────────────── */
+#scroll-strip{position:fixed;top:var(--nav-h);right:0;width:28px;
+  bottom:calc(60px + env(safe-area-inset-bottom));z-index:98;
+  touch-action:none;cursor:ns-resize;
+  display:flex;align-items:center;justify-content:center}
+#scroll-strip::after{content:'';display:block;width:3px;height:48px;
+  border-radius:2px;background:var(--border2);opacity:.5}
+.page{display:none;padding:.75rem;padding-right:calc(.75rem + 28px)}
+.page.active{display:block;animation:fadeIn .15s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* global E-Stop bar */
+#estop-bar{position:fixed;bottom:0;left:0;right:0;padding:.6rem .75rem;
+  padding-bottom:calc(.6rem + env(safe-area-inset-bottom));
+  background:var(--s1);border-top:1px solid var(--border);z-index:99;
+  display:flex;gap:.5rem}
+#estop-all-btn{flex:1;background:var(--err);border:none;border-radius:10px;color:#fff;
+  font-size:.9rem;font-weight:700;padding:.65rem;cursor:pointer;letter-spacing:.04em}
+#estop-all-btn:active{filter:brightness(.8)}
+#logout-btn{background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  color:var(--mut);font-size:.8rem;padding:.6rem 1rem;cursor:pointer;white-space:nowrap}
+#logout-btn:active{background:var(--s3)}
+
+/* ── Cards / shared ───────────────────────────────────────────────────────── */
+.card{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:1rem;margin-bottom:.75rem;overflow:hidden}
+.card-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin-bottom:.75rem}
+.pill{display:inline-flex;align-items:center;gap:.3rem;background:var(--s3);border:1px solid var(--border2);
+  border-radius:20px;padding:.15rem .55rem;font-size:.7rem;color:var(--mut)}
+.badge{display:inline-block;padding:.15rem .45rem;border-radius:4px;font-size:.68rem;font-weight:600}
+.badge-idle{background:var(--s3);color:var(--mut)}
+.badge-move,.badge-test{background:var(--a1d);color:var(--a1)}
+.badge-run,.badge-jog{background:rgba(6,182,212,.18);color:var(--cyan)}
+.badge-estop{background:rgba(239,68,68,.2);color:var(--err)}
+
+/* ── Dashboard cards ──────────────────────────────────────────────────────── */
+.dash-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.6rem}
+.dash-card{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:.85rem .85rem .7rem;cursor:pointer;transition:border-color .15s,background .15s}
+.dash-card:active,.dash-card:hover{border-color:var(--a1);background:var(--a1d)}
+.dc-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem}
+.dc-label{font-size:.85rem;font-weight:700}
+.dc-model{font-size:.65rem;color:var(--mut);margin-top:.15rem}
+.dc-angle{font-size:1.5rem;font-weight:700;color:var(--a1);letter-spacing:-.02em}
+.dc-angle-unit{font-size:.75rem;color:var(--mut);font-weight:400}
+.dc-status{margin-top:.4rem;display:flex;align-items:center;gap:.4rem}
+
+/* ── Motor page ───────────────────────────────────────────────────────────── */
+.motor-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;
+  background:var(--s1);border:1px solid var(--border);border-radius:12px;padding:.85rem}
+.m-badge-big{width:36px;height:36px;border-radius:8px;background:var(--a1d);color:var(--a1);
+  font-weight:800;font-size:.95rem;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.m-title{flex:1}
+.m-title-name{font-size:.95rem;font-weight:700}
+.m-title-sub{font-size:.7rem;color:var(--mut);margin-top:.1rem}
+/* toggle switch */
+.sw-wrap{display:flex;align-items:center;gap:.4rem}
+.sw-wrap label{font-size:.68rem;color:var(--mut)}
+.sw{position:relative;width:40px;height:22px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0}
+.sw-track{position:absolute;inset:0;background:var(--s3);border-radius:11px;
+  transition:background .2s;border:1px solid var(--border2)}
+.sw input:checked ~ .sw-track{background:var(--ok)}
+.sw-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;
+  background:#fff;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw input:checked ~ .sw-thumb{left:21px}
+
+/* dial */
+.dial-wrap{display:flex;justify-content:center;margin:0 auto .5rem;max-width:220px}
+.dial-wrap svg{width:100%;touch-action:none}
+.dial-info{display:flex;justify-content:center;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.di-cur{font-size:1.25rem;font-weight:700;color:var(--a1)}
+.di-arrow{color:var(--ylw);font-weight:600}
+.di-tgt{font-size:1rem;color:var(--ylw)}
+.di-zero{font-size:.7rem;color:var(--err);background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.25);border-radius:4px;padding:.1rem .4rem}
+
+/* tabs */
+.tabs{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:.2rem;gap:.2rem;margin-bottom:.75rem}
+.tab-btn{flex:1;padding:.5rem;border:none;border-radius:8px;background:none;
+  color:var(--mut);font-size:.82rem;cursor:pointer;transition:all .15s;font-weight:500}
+.tab-btn.active{background:var(--s1);color:var(--txt);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* mode switch */
+.mode-sw{display:flex;background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:.15rem;gap:.15rem;margin-bottom:.75rem}
+.mode-btn{flex:1;padding:.45rem;border:none;border-radius:6px;background:none;
+  color:var(--mut);font-size:.82rem;cursor:pointer;transition:all .15s;font-weight:500}
+.mode-btn.active{background:var(--a1);color:#fff}
+
+/* inputs */
+.ctrl{margin-bottom:.85rem}
+.ctrl-label{display:flex;justify-content:space-between;font-size:.75rem;color:var(--mut);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem}
+.ctrl-label span:last-child{color:var(--txt);font-weight:600;text-transform:none;letter-spacing:0}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:5px;border-radius:3px;
+  background:var(--s3);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;
+  border-radius:50%;background:var(--a1);cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.num-row{display:flex;align-items:center;gap:.5rem}
+.num-row input[type=number]{flex:1;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;color:var(--txt);font-size:.95rem;padding:.55rem .75rem;
+  outline:none;text-align:center;-webkit-appearance:none;appearance:none}
+.num-row input:focus{border-color:var(--a1)}
+.adj-btn{background:var(--s3);border:1px solid var(--border2);border-radius:7px;
+  color:var(--txt);cursor:pointer;font-size:1.1rem;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.adj-btn:active{background:var(--a1d)}
+
+/* dir buttons */
+.dir-row{display:flex;gap:.5rem;margin-bottom:.85rem}
+.dir-btn{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--txt2);cursor:pointer;font-size:.82rem;font-weight:600;padding:.55rem;
+  transition:all .15s}
+.dir-btn.active{background:var(--a1);border-color:var(--a1);color:#fff}
+.dir-btn:active{background:var(--a1h)}
+
+/* go / stop buttons */
+.go-btn{width:100%;background:var(--a1);border:none;border-radius:10px;color:#fff;
+  cursor:pointer;font-size:1rem;font-weight:700;letter-spacing:.04em;padding:.75rem;
+  margin-bottom:.65rem;transition:background .12s}
+.go-btn:active{background:var(--a1h)}
+.go-btn:disabled{background:var(--s3);color:var(--mut);cursor:not-allowed}
+.stop-btn{width:100%;background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  color:var(--txt);cursor:pointer;font-size:.9rem;font-weight:600;padding:.6rem;
+  margin-bottom:.65rem}
+.stop-btn:active{background:var(--s3)}
+
+/* jog */
+.jog-row{display:flex;gap:.5rem;margin-bottom:.75rem}
+.jog-btn{flex:1;background:var(--s2);border:1px solid var(--border2);border-radius:10px;
+  color:var(--txt);cursor:pointer;font-size:.8rem;font-weight:600;padding:.65rem .5rem;
+  user-select:none;-webkit-user-select:none;touch-action:none;transition:background .1s}
+.jog-btn:active,.jog-btn.active{background:var(--ylwd);border-color:var(--ylw);color:var(--ylw)}
+
+/* bottom actions */
+.action-row{display:flex;gap:.5rem}
+.zero-btn,.estop-btn{flex:1;border:none;border-radius:10px;cursor:pointer;
+  font-size:.82rem;font-weight:600;padding:.65rem}
+.zero-btn{background:var(--s2);border:1px solid var(--border2);color:var(--txt2)}
+.zero-btn:active{background:var(--ok);color:#fff;border-color:var(--ok)}
+.estop-btn{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--err)}
+.estop-btn:active{background:var(--err);color:#fff}
+
+/* test tab */
+.test-section{background:var(--s2);border:1px solid var(--border);border-radius:10px;
+  padding:.85rem;margin-bottom:.75rem}
+.test-section-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;
+  color:var(--mut);margin-bottom:.85rem}
+.test-progress{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  padding:.6rem .85rem;margin:.65rem 0;display:flex;justify-content:space-between;align-items:center}
+.tp-cycles{font-size:1.1rem;font-weight:700;color:var(--a1)}
+.tp-label{font-size:.7rem;color:var(--mut)}
+.progress-bar-wrap{height:5px;background:var(--s3);border-radius:3px;overflow:hidden;margin:.4rem 0}
+.progress-bar{height:100%;background:var(--a1);border-radius:3px;transition:width .5s}
+
+/* ── Log page ─────────────────────────────────────────────────────────────── */
+.log-toolbar{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.log-toolbar button{background:var(--s2);border:1px solid var(--border);border-radius:8px;
+  color:var(--txt2);cursor:pointer;font-size:.8rem;padding:.45rem .8rem}
+.log-toolbar button:active{background:var(--s3)}
+.log-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px;background:var(--s1)}
+.log-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.log-table th{background:var(--s2);color:var(--mut);padding:.55rem .65rem;
+  text-align:left;font-size:.67rem;text-transform:uppercase;letter-spacing:.07em;
+  white-space:nowrap;border-bottom:1px solid var(--border)}
+.log-table td{padding:.5rem .65rem;border-bottom:1px solid var(--border);
+  vertical-align:top;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.log-table tr:last-child td{border-bottom:none}
+.log-table tr:hover td{background:var(--s2)}
+.log-action{font-weight:600}
+.log-empty{text-align:center;padding:2rem;color:var(--mut)}
+.log-size-info{font-size:.72rem;color:var(--mut);margin-top:.5rem;text-align:right}
+
+/* ── Library page ─────────────────────────────────────────────────────────── */
+.lib-slot{background:var(--s1);border:1px solid var(--border);border-radius:12px;
+  padding:1rem;margin-bottom:.75rem}
+.ls-header{display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem}
+.ls-idx{width:30px;height:30px;border-radius:7px;background:var(--s3);color:var(--a1);
+  font-weight:700;font-size:.85rem;display:flex;align-items:center;justify-content:center}
+.ls-title{flex:1;font-size:.9rem;font-weight:600}
+.lib-form input{width:100%;background:var(--s2);border:1px solid var(--border);
+  border-radius:8px;color:var(--txt);font-size:.88rem;padding:.55rem .75rem;
+  outline:none;margin-bottom:.6rem}
+.lib-form input:focus{border-color:var(--a1)}
+.lib-form label{font-size:.7rem;color:var(--mut);display:block;margin-bottom:.25rem;
+  text-transform:uppercase;letter-spacing:.07em}
+.lib-row{display:flex;gap:.5rem;margin-top:.35rem}
+.save-btn{flex:1;background:var(--a1);border:none;border-radius:8px;color:#fff;
+  cursor:pointer;font-size:.85rem;font-weight:600;padding:.6rem}
+.save-btn:active{background:var(--a1h)}
+.del-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);
+  border-radius:8px;color:var(--err);cursor:pointer;font-size:.85rem;padding:.6rem .9rem}
+.del-btn:active{background:var(--err);color:#fff}
+
+/* ── Settings page ────────────────────────────────────────────────────────── */
+.settings-item{display:flex;align-items:center;justify-content:space-between;
+  padding:.85rem;background:var(--s1);border:1px solid var(--border);border-radius:10px;
+  margin-bottom:.65rem}
+.si-left{flex:1}
+.si-label{font-size:.88rem;font-weight:500}
+.si-desc{font-size:.72rem;color:var(--mut);margin-top:.15rem}
+.si-val{font-size:.8rem;color:var(--a1);font-weight:600;text-align:right}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+#toast{position:fixed;top:calc(var(--nav-h) + 10px);left:50%;transform:translateX(-50%) translateY(-80px);
+  background:#111;color:#fff;border-radius:8px;padding:.55rem 1rem;font-size:.82rem;
+  z-index:999;transition:transform .2s;white-space:nowrap;max-width:90vw;text-align:center;
+  box-shadow:0 4px 16px rgba(0,0,0,.4)}
+#toast.show{transform:translateX(-50%) translateY(0)}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- ── Top nav ─────────────────────────────────────────────────────────── -->
+  <nav id="topnav">
+    <button id="menu-btn" onclick="toggleSidebar()" aria-label="Menu">☰</button>
+    <span id="topnav-title">MotionOS</span>
+    <div id="topnav-actions">
+      <button class="icon-btn" id="rec-btn" onclick="toggleRecording()">⏺ LOG</button>
+      <button class="icon-btn" onclick="toggleTheme()">☀︎</button>
+    </div>
+  </nav>
+
+  <div id="content-area">
+    <!-- ── Sidebar ──────────────────────────────────────────────────────── -->
+    <div id="sidebar">
+      <div class="sidebar-section">Dashboard</div>
+      <div class="nav-item active" id="nav-dashboard" onclick="goTo('dashboard')">
+        <span class="ni-icon">⊞</span> Dashboard
+      </div>
+      <div class="sidebar-section">Motors</div>
+      <div id="sidebar-motors"></div>
+      <div class="sidebar-section">System</div>
+      <div class="nav-item" id="nav-library" onclick="goTo('library')">
+        <span class="ni-icon">⚙</span> Motor Library
+      </div>
+      <div class="nav-item" id="nav-log" onclick="goTo('log')">
+        <span class="ni-icon">📋</span> Log
+      </div>
+      <div class="nav-item" id="nav-settings" onclick="goTo('settings')">
+        <span class="ni-icon">⋯</span> Settings
+      </div>
+    </div>
+    <div id="overlay" onclick="closeSidebar()"></div>
+
+    <!-- ── Pages ───────────────────────────────────────────────────────── -->
+    <div id="main">
+      <div class="page active" id="page-dashboard"></div>
+      <div class="page" id="page-motor-0"></div>
+      <div class="page" id="page-motor-1"></div>
+      <div class="page" id="page-motor-2"></div>
+      <div class="page" id="page-motor-3"></div>
+      <div class="page" id="page-library"></div>
+      <div class="page" id="page-log"></div>
+      <div class="page" id="page-settings"></div>
+    </div>
+  </div>
+
+  <!-- ── Global E-Stop ──────────────────────────────────────────────────── -->
+  <div id="estop-bar">
+    <button id="estop-all-btn" onclick="estopAll()">⚡ E-STOP ALL</button>
+    <button id="logout-btn" onclick="doLogout()">Sign out</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="scroll-strip" aria-hidden="true"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+//  MotionOS PWA — Main JavaScript
+// ═══════════════════════════════════════════════════════════════════════════════
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = { motors: [], recording: false, log_size: 0, time_synced: false };
+let motorModes = {};          // per-motor UI mode: 'move' or 'goto'
+let motorDirs = {};           // per-motor direction: true=CW
+let motorTargets = {};        // tap-on-dial target angle per motor
+let jogIntervals = {};        // active jog heartbeat intervals
+let currentPage = 'dashboard';
+let ws;
+
+const MODE_NAMES = ['Idle','Moving','Running','Jogging','Testing','E-Stopped'];
+const MODE_BADGE = ['badge-idle','badge-move','badge-run','badge-jog','badge-test','badge-estop'];
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+function init() {
+  initTheme();
+  buildDashboard();
+  for (let i = 0; i < 4; i++) {
+    motorModes[i] = 'move';
+    motorDirs[i]  = true;
+    motorTargets[i] = null;
+    buildMotorPage(i);
+  }
+  buildSidebarMotors();
+  buildLibraryPage();
+  buildLogPage();
+  buildSettingsPage();
+  connectWS();
+  initScrollStrip();
+  if ('serviceWorker' in navigator)
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function initTheme() {
+  const t = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelector('#topnav-actions .icon-btn:last-child').textContent = t==='dark' ? '☀︎' : '🌙';
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const nxt = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', nxt);
+  localStorage.setItem('theme', nxt);
+  document.querySelector('#topnav-actions .icon-btn:last-child').textContent = nxt==='dark'?'☀︎':'🌙';
+}
+
+// ── WebSocket ─────────────────────────────────────────────────────────────────
+function connectWS() {
+  ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = e => { try { applyTelemetry(JSON.parse(e.data)); } catch{} };
+  ws.onclose   = () => setTimeout(connectWS, 2000);
+  ws.onerror   = () => ws.close();
+}
+
+function applyTelemetry(data) {
+  state = data;
+  updateRecordingUI();
+  data.motors.forEach(m => {
+    updateDashCard(m);
+    updateMotorPage(m);
+    updateSidebarBadge(m);
+  });
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(url, body) {
+  try {
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (r.status === 401) { location.href = '/login'; return null; }
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById(`page-${page}`);
+  const nv = document.getElementById(`nav-${page}`);
+  if (pg) pg.classList.add('active');
+  if (nv) nv.classList.add('active');
+  currentPage = page;
+  document.getElementById('topnav-title').textContent =
+    page === 'dashboard' ? 'MotionOS' :
+    page.startsWith('motor-') ? (state.motors[parseInt(page.split('-')[1])]?.label || page.toUpperCase()) :
+    page.charAt(0).toUpperCase() + page.slice(1);
+  closeSidebar();
+  if (page === 'log') refreshLog();
+}
+
+function goToMotor(i) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const pg = document.getElementById(`page-motor-${i}`);
+  const nv = document.getElementById(`nav-motor-${i}`);
+  if (pg) pg.classList.add('active');
+  if (nv) nv.classList.add('active');
+  currentPage = `motor-${i}`;
+  const m = state.motors[i];
+  document.getElementById('topnav-title').textContent = m ? (m.motor ? `${m.label} — ${m.motor}` : m.label) : `Motor ${i+1}`;
+  closeSidebar();
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ─── Sidebar motor links ──────────────────────────────────────────────────────
+function buildSidebarMotors() {
+  const el = document.getElementById('sidebar-motors');
+  el.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'nav-item';
+    d.id = `nav-motor-${i}`;
+    d.onclick = () => goToMotor(i);
+    d.innerHTML = `<span class="ni-icon">⊙</span> M${i+1} <span class="nav-badge" id="sb-badge-${i}">—</span>`;
+    el.appendChild(d);
+  }
+}
+function updateSidebarBadge(m) {
+  const b = document.getElementById(`sb-badge-${m.idx}`);
+  if (!b) return;
+  if (!m.active) { b.className='nav-badge'; b.textContent='—'; return; }
+  const nm = ['idle','ok','mode-run','mode-run','badge-test','mode-err'];
+  const lbl = m.mode===5?'E-STOP': m.mode===4?`${m.test_cycles}/${m.test_target}`:
+              m.mode===0?(m.zero_set?m.angle.toFixed(1)+'°':'no zero'):MODE_NAMES[m.mode];
+  b.className = 'nav-badge ' + (m.mode===5?'mode-err': m.mode>=2&&m.mode<=4?'mode-run':'');
+  b.textContent = lbl;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Dashboard
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildDashboard() {
+  const pg = document.getElementById('page-dashboard');
+  let html = '<div class="dash-grid">';
+  for (let i = 0; i < 4; i++) {
+    html += `<div class="dash-card" id="dc-${i}" onclick="goToMotor(${i})">
+      <div class="dc-header">
+        <div>
+          <div class="dc-label" id="dc-label-${i}">M${i+1}</div>
+          <div class="dc-model" id="dc-model-${i}">—</div>
+        </div>
+        <span class="badge badge-idle" id="dc-badge-${i}">Idle</span>
+      </div>
+      <div class="dc-angle" id="dc-angle-${i}"><span id="dc-ang-${i}">—</span><span class="dc-angle-unit">°</span></div>
+      <div class="dc-status">
+        <span class="pill" id="dc-ena-${i}">OFF</span>
+        <span class="pill" id="dc-rpm-${i}" style="display:none">0 RPM</span>
+      </div>
+    </div>`;
+  }
+  html += '</div>';
+  pg.innerHTML = html;
+}
+
+function updateDashCard(m) {
+  const elLabel = document.getElementById(`dc-label-${m.idx}`);
+  const elModel = document.getElementById(`dc-model-${m.idx}`);
+  const elBadge = document.getElementById(`dc-badge-${m.idx}`);
+  const elAng   = document.getElementById(`dc-ang-${m.idx}`);
+  const elEna   = document.getElementById(`dc-ena-${m.idx}`);
+  const elRpm   = document.getElementById(`dc-rpm-${m.idx}`);
+  if (!elLabel) return;
+  if (!m.active) { document.getElementById(`dc-${m.idx}`).style.opacity='.45'; return; }
+  document.getElementById(`dc-${m.idx}`).style.opacity='1';
+  elLabel.textContent = m.label;
+  elModel.textContent = [m.motor, m.driver].filter(Boolean).join(' / ') || '—';
+  elBadge.className   = 'badge ' + MODE_BADGE[m.mode];
+  elBadge.textContent = MODE_NAMES[m.mode];
+  elAng.textContent   = m.zero_set ? m.angle.toFixed(1) : '—';
+  elEna.textContent   = m.enabled  ? '● ON' : '○ OFF';
+  elEna.style.color   = m.enabled  ? 'var(--ok)' : '';
+  if (m.mode === 2 || m.mode === 3) {
+    elRpm.style.display = ''; elRpm.textContent = m.rpm.toFixed(0) + ' RPM';
+  } else { elRpm.style.display = 'none'; }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Motor Pages
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildMotorPage(i) {
+  const pg = document.getElementById(`page-motor-${i}`);
+  pg.innerHTML = `
+  <!-- header -->
+  <div class="motor-header">
+    <div class="m-badge-big">M${i+1}</div>
+    <div class="m-title">
+      <div class="m-title-name" id="mn-${i}">Motor ${i+1}</div>
+      <div class="m-title-sub" id="ms-${i}">—</div>
+    </div>
+    <div class="sw-wrap">
+      <label for="ena-${i}">ENA</label>
+      <label class="sw">
+        <input type="checkbox" id="ena-${i}" onchange="onEnaChange(${i})">
+        <span class="sw-track"></span>
+        <span class="sw-thumb"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- interactive dial -->
+  <div class="dial-wrap" id="dial-${i}"></div>
+  <div class="dial-info">
+    <span class="di-cur" id="di-cur-${i}">—</span>
+    <span class="di-arrow" id="di-arr-${i}" style="display:none">→</span>
+    <span class="di-tgt"  id="di-tgt-${i}" style="display:none">—°</span>
+    <span class="di-zero" id="di-zero-${i}" style="display:none">Zero not set</span>
+  </div>
+
+  <!-- tabs -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tb-pos-${i}" onclick="switchTab(${i},'pos')">Position</button>
+    <button class="tab-btn" id="tb-test-${i}" onclick="switchTab(${i},'test')">Test</button>
+  </div>
+
+  <!-- ── Position tab ──────────────────────────────────────────────────── -->
+  <div class="tab-panel active" id="tp-pos-${i}">
+    <div class="mode-sw">
+      <button class="mode-btn active" id="mb-move-${i}" onclick="setUiMode(${i},'move')">↔ Move</button>
+      <button class="mode-btn" id="mb-goto-${i}" onclick="setUiMode(${i},'goto')">⊕ Go To</button>
+    </div>
+
+    <!-- angle input -->
+    <div class="ctrl">
+      <div class="ctrl-label"><span id="angle-lbl-${i}">Angle (°)</span></div>
+      <div class="num-row">
+        <button class="adj-btn" onclick="adjAngle(${i},-5)">−</button>
+        <input type="number" id="angle-inp-${i}" value="45" min="-360" max="360" step="0.5"
+               oninput="onAngleInput(${i})">
+        <button class="adj-btn" onclick="adjAngle(${i},5)">+</button>
+      </div>
+    </div>
+
+    <!-- direction (move mode only) -->
+    <div id="dir-row-${i}">
+      <div class="dir-row">
+        <button class="dir-btn active" id="dir-cw-${i}" onclick="setDir(${i},true)">↻ CW</button>
+        <button class="dir-btn" id="dir-ccw-${i}" onclick="setDir(${i},false)">↺ CCW</button>
+      </div>
+    </div>
+
+    <!-- RPM slider -->
+    <div class="ctrl">
+      <div class="ctrl-label">
+        <span>Speed</span>
+        <span><span id="rpm-val-${i}">30</span> RPM</span>
+      </div>
+      <input type="range" id="rpm-${i}" min="1" max="200" value="30"
+             oninput="document.getElementById('rpm-val-${i}').textContent=this.value">
+    </div>
+
+    <!-- go / stop -->
+    <button class="go-btn" id="go-btn-${i}" onclick="executeMove(${i})">GO →</button>
+    <button class="stop-btn" id="stop-btn-${i}" onclick="stopMotor(${i})" style="display:none">■ STOP</button>
+
+    <!-- jog -->
+    <div class="jog-row">
+      <button class="jog-btn" id="jog-ccw-${i}" aria-label="Jog CCW">◀◀ JOG CCW</button>
+      <button class="jog-btn" id="jog-cw-${i}"  aria-label="Jog CW">JOG CW ▶▶</button>
+    </div>
+
+    <!-- bottom actions -->
+    <div class="action-row">
+      <button class="zero-btn" onclick="setZero(${i})">⊕ Set Zero</button>
+      <button class="estop-btn" onclick="estop(${i})">⚡ E-Stop</button>
+    </div>
+  </div>
+
+  <!-- ── Test tab ──────────────────────────────────────────────────────── -->
+  <div class="tab-panel" id="tp-test-${i}">
+    <!-- continuous -->
+    <div class="test-section">
+      <div class="test-section-title">Continuous Rotation</div>
+      <div class="ctrl">
+        <div class="ctrl-label">
+          <span>Speed</span><span><span id="t-rpm-val-${i}">30</span> RPM</span>
+        </div>
+        <input type="range" id="t-rpm-${i}" min="1" max="200" value="30"
+               oninput="document.getElementById('t-rpm-val-${i}').textContent=this.value">
+      </div>
+      <div class="dir-row">
+        <button class="dir-btn active" id="t-dir-cw-${i}" onclick="setTestDir(${i},true)">↻ CW</button>
+        <button class="dir-btn" id="t-dir-ccw-${i}" onclick="setTestDir(${i},false)">↺ CCW</button>
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="go-btn" style="margin:0;flex:1" onclick="runContinuous(${i})">▶ RUN</button>
+        <button class="stop-btn" style="margin:0;flex:1" onclick="stopMotor(${i})">■ STOP</button>
+      </div>
+    </div>
+
+    <!-- repeatability test -->
+    <div class="test-section">
+      <div class="test-section-title">Repeatability Test</div>
+      <div class="ctrl">
+        <div class="ctrl-label"><span>Angle per cycle (°)</span></div>
+        <div class="num-row">
+          <button class="adj-btn" onclick="adjTestAngle(${i},-5)">−</button>
+          <input type="number" id="ta-${i}" value="90" min="1" max="360" step="1">
+          <button class="adj-btn" onclick="adjTestAngle(${i},5)">+</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-label"><span>Cycles</span></div>
+        <div class="num-row">
+          <button class="adj-btn" onclick="adjCycles(${i},-1)">−</button>
+          <input type="number" id="tc-${i}" value="10" min="1" max="1000" step="1">
+          <button class="adj-btn" onclick="adjCycles(${i},1)">+</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-label">
+          <span>Speed</span><span><span id="tr-rpm-val-${i}">30</span> RPM</span>
+        </div>
+        <input type="range" id="tr-rpm-${i}" min="1" max="200" value="30"
+               oninput="document.getElementById('tr-rpm-val-${i}').textContent=this.value">
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.65rem">
+        <button class="go-btn" style="margin:0;flex:1" id="tst-start-${i}" onclick="startTest(${i})">▶ START TEST</button>
+        <button class="stop-btn" style="margin:0;flex:1" onclick="stopTest(${i})">■ STOP</button>
+      </div>
+      <div class="test-progress">
+        <div>
+          <div class="tp-cycles" id="tp-done-${i}">0</div>
+          <div class="tp-label">cycles done</div>
+        </div>
+        <div style="flex:1;margin:0 1rem">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="tp-bar-${i}" style="width:0%"></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div class="tp-cycles" id="tp-total-${i}">10</div>
+          <div class="tp-label">total</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  buildDial(i);
+  bindJogButtons(i);
+}
+
+function switchTab(i, which) {
+  ['pos','test'].forEach(t => {
+    document.getElementById(`tp-${t}-${i}`)?.classList.toggle('active', t===which);
+    document.getElementById(`tb-${t}-${i}`)?.classList.toggle('active', t===which);
+  });
+}
+
+function setUiMode(i, mode) {
+  motorModes[i] = mode;
+  document.getElementById(`mb-move-${i}`)?.classList.toggle('active', mode==='move');
+  document.getElementById(`mb-goto-${i}`)?.classList.toggle('active', mode==='goto');
+  document.getElementById(`dir-row-${i}`).style.display = mode==='goto' ? 'none' : '';
+  document.getElementById(`angle-lbl-${i}`).textContent = mode==='move' ? 'Angle (°)' : 'Target Angle (°)';
+  if (mode==='goto') {
+    const inp = document.getElementById(`angle-inp-${i}`);
+    inp.min='0'; inp.max='360';
+    if (motorTargets[i] !== null)
+      inp.value = motorTargets[i].toFixed(1);
+  } else {
+    const inp = document.getElementById(`angle-inp-${i}`);
+    inp.min='-360'; inp.max='360';
+  }
+}
+
+function setDir(i, cw) {
+  motorDirs[i] = cw;
+  document.getElementById(`dir-cw-${i}`)?.classList.toggle('active',  cw);
+  document.getElementById(`dir-ccw-${i}`)?.classList.toggle('active', !cw);
+}
+
+let testDirs = {};
+function setTestDir(i, cw) {
+  testDirs[i] = cw;
+  document.getElementById(`t-dir-cw-${i}`)?.classList.toggle('active', cw);
+  document.getElementById(`t-dir-ccw-${i}`)?.classList.toggle('active',!cw);
+}
+
+function adjAngle(i, d) {
+  const inp = document.getElementById(`angle-inp-${i}`);
+  if (!inp) return;
+  let v = parseFloat(inp.value || 0) + d;
+  const mx = motorModes[i]==='goto' ? 360 : 360;
+  const mn = motorModes[i]==='goto' ? 0 : -360;
+  v = Math.max(mn, Math.min(mx, v));
+  inp.value = v;
+  if (motorModes[i]==='goto') { motorTargets[i]=v; updateDialTarget(i, v); }
+}
+function onAngleInput(i) {
+  if (motorModes[i]==='goto') {
+    const v = parseFloat(document.getElementById(`angle-inp-${i}`).value || 0);
+    motorTargets[i] = v;
+    updateDialTarget(i, v);
+  }
+}
+function adjTestAngle(i, d) {
+  const inp = document.getElementById(`ta-${i}`);
+  if (inp) inp.value = Math.max(1, Math.min(360, parseInt(inp.value||90)+d));
+}
+function adjCycles(i, d) {
+  const inp = document.getElementById(`tc-${i}`);
+  if (inp) inp.value = Math.max(1, Math.min(1000, parseInt(inp.value||10)+d));
+}
+
+function onEnaChange(i) {
+  const en = document.getElementById(`ena-${i}`).checked;
+  api(`/api/motor/${i}/ena`, { enabled: en });
+}
+
+async function executeMove(i) {
+  const rpm = parseInt(document.getElementById(`rpm-${i}`).value || 30);
+  if (motorModes[i] === 'goto') {
+    const m = state.motors[i];
+    if (!m?.zero_set) { showToast('Set zero first!'); return; }
+    const ang = parseFloat(document.getElementById(`angle-inp-${i}`).value || 0);
+    await api(`/api/motor/${i}/goto`, { angle: ang, rpm });
+  } else {
+    let ang = parseFloat(document.getElementById(`angle-inp-${i}`).value || 45);
+    if (!motorDirs[i]) ang = -Math.abs(ang);
+    await api(`/api/motor/${i}/move`, { angle: ang, rpm });
+  }
+}
+
+async function stopMotor(i) { await api(`/api/motor/${i}/stop`); }
+async function estop(i)     { await api(`/api/motor/${i}/estop`); }
+async function estopAll()   { await api('/api/estop_all'); }
+async function setZero(i)   {
+  await api(`/api/motor/${i}/zero`);
+  showToast(`M${i+1} zero set ✓`);
+  motorTargets[i] = null;
+  updateDialTarget(i, null);
+}
+
+async function runContinuous(i) {
+  const rpm = parseInt(document.getElementById(`t-rpm-${i}`).value || 30);
+  const cw  = testDirs[i] !== false;
+  await api(`/api/motor/${i}/run`, { rpm, dir: cw ? 1 : 0 });
+}
+
+async function startTest(i) {
+  const angle  = parseFloat(document.getElementById(`ta-${i}`).value || 90);
+  const cycles = parseInt(document.getElementById(`tc-${i}`).value || 10);
+  const rpm    = parseInt(document.getElementById(`tr-rpm-${i}`).value || 30);
+  await api(`/api/motor/${i}/test`, { action:'start', angle, rpm, cycles });
+}
+async function stopTest(i) { await api(`/api/motor/${i}/test`, { action:'stop' }); }
+
+// ── Jog buttons (touch + mouse, heartbeat watchdog) ───────────────────────────
+function bindJogButtons(i) {
+  bindJog(document.getElementById(`jog-ccw-${i}`), i, false);
+  bindJog(document.getElementById(`jog-cw-${i}`),  i, true);
+}
+
+function bindJog(btn, i, cw) {
+  if (!btn) return;
+  let hb = null;
+
+  const start = e => {
+    e.preventDefault();
+    const rpm = parseInt(document.getElementById(`rpm-${i}`)?.value || DEFAULT_JOG_RPM);
+    api(`/api/motor/${i}/jog`, { action:'start', dir: cw?1:0, rpm });
+    btn.classList.add('active');
+    hb = setInterval(() => api(`/api/motor/${i}/jog`, { action:'heartbeat' }), 200);
+  };
+  const stop = e => {
+    e.preventDefault();
+    clearInterval(hb); hb = null;
+    btn.classList.remove('active');
+    api(`/api/motor/${i}/jog`, { action:'stop' });
+  };
+
+  btn.addEventListener('touchstart',  start, { passive:false });
+  btn.addEventListener('touchend',    stop,  { passive:false });
+  btn.addEventListener('touchcancel', stop,  { passive:false });
+  btn.addEventListener('mousedown',   start);
+  btn.addEventListener('mouseup',     stop);
+  btn.addEventListener('mouseleave',  stop);
+}
+
+const DEFAULT_JOG_RPM = 10;
+
+// ── Motor page telemetry update ───────────────────────────────────────────────
+function updateMotorPage(m) {
+  const i = m.idx;
+  const el = (id) => document.getElementById(id);
+
+  if (!m.active) { el(`page-motor-${i}`)?.style && (el(`page-motor-${i}`).style.opacity='.5'); return; }
+  el(`mn-${i}`) && (el(`mn-${i}`).textContent = m.label);
+  el(`ms-${i}`) && (el(`ms-${i}`).textContent = [m.motor, m.driver].filter(Boolean).join(' / ') || '—');
+
+  const enaChk = el(`ena-${i}`);
+  if (enaChk && !enaChk.matches(':active')) enaChk.checked = m.enabled;
+
+  // Position info
+  const angTxt = m.zero_set ? m.angle.toFixed(1)+'°' : '—';
+  if (el(`di-cur-${i}`)) el(`di-cur-${i}`).textContent = angTxt;
+  if (el(`di-zero-${i}`)) el(`di-zero-${i}`).style.display = m.zero_set ? 'none' : '';
+
+  // Go / Stop button visibility
+  const moving = m.mode===1||m.mode===2||m.mode===3||m.mode===4;
+  if (el(`go-btn-${i}`))  el(`go-btn-${i}`).style.display  = moving ? 'none' : '';
+  if (el(`stop-btn-${i}`)) el(`stop-btn-${i}`).style.display = moving ? '' : 'none';
+
+  // Test progress
+  if (m.test_running) {
+    const pct = m.test_target > 0 ? (m.test_cycles / m.test_target * 100).toFixed(0) : 0;
+    if (el(`tp-done-${i}`)) el(`tp-done-${i}`).textContent = m.test_cycles;
+    if (el(`tp-total-${i}`)) el(`tp-total-${i}`).textContent = m.test_target;
+    if (el(`tp-bar-${i}`)) el(`tp-bar-${i}`).style.width = pct+'%';
+  }
+
+  // Update dial
+  updateDialAngle(i, m.zero_set ? m.angle : null);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  SVG Dial
+// ═══════════════════════════════════════════════════════════════════════════════
+const DIAL_R = 95;   // circle radius
+const DIAL_S = 220;  // viewBox size
+const DIAL_C = 110;  // center
+
+function buildDial(i) {
+  const wrap = document.getElementById(`dial-${i}`);
+  if (!wrap) return;
+  const marks = [0,30,60,90,120,150,180,210,240,270,300,330].map(deg => {
+    const major = deg % 90 === 0;
+    const inner = DIAL_C + (major ? (DIAL_R-14) : (DIAL_R-8));
+    const outer = DIAL_C + DIAL_R - 2;
+    const [ix,iy] = dialPt(DIAL_C, DIAL_C, major?(DIAL_R-14):(DIAL_R-8), deg);
+    const [ox,oy] = dialPt(DIAL_C, DIAL_C, DIAL_R-2, deg);
+    return `<line x1="${ix.toFixed(1)}" y1="${iy.toFixed(1)}" x2="${ox.toFixed(1)}" y2="${oy.toFixed(1)}" stroke="var(--border2)" stroke-width="${major?2:1}"/>`;
+  }).join('');
+  const labels = [0,90,180,270].map(deg => {
+    const [x,y] = dialPt(DIAL_C, DIAL_C, DIAL_R-26, deg);
+    return `<text x="${x.toFixed(1)}" y="${(y+4).toFixed(1)}" text-anchor="middle" fill="var(--mut)" font-size="10" font-family="system-ui">${deg}°</text>`;
+  }).join('');
+
+  const svg = `<svg id="dial-svg-${i}" viewBox="0 0 ${DIAL_S} ${DIAL_S}" xmlns="http://www.w3.org/2000/svg" style="touch-action:none;cursor:crosshair">
+    <circle cx="${DIAL_C}" cy="${DIAL_C}" r="${DIAL_R}" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+    ${marks}${labels}
+    <path id="d-arc-${i}" fill="var(--a1d)" stroke="none"/>
+    <path id="d-arc-s-${i}" fill="none" stroke="var(--a1)" stroke-width="2"/>
+    <line id="d-tptr-${i}" x1="${DIAL_C}" y1="${DIAL_C}" x2="${DIAL_C}" y2="${DIAL_C-DIAL_R+18}"
+          stroke="var(--ylw)" stroke-width="2" stroke-dasharray="5,3" stroke-linecap="round" display="none"/>
+    <line id="d-ptr-${i}" x1="${DIAL_C}" y1="${DIAL_C}" x2="${DIAL_C}" y2="${DIAL_C-DIAL_R+18}"
+          stroke="var(--a1)" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="${DIAL_C}" cy="${DIAL_C}" r="6" fill="var(--s3)" stroke="var(--a1)" stroke-width="1.5"/>
+    <text id="d-txt-${i}" x="${DIAL_C}" y="${DIAL_C+35}" text-anchor="middle"
+          fill="var(--txt)" font-size="13" font-weight="700" font-family="system-ui">—</text>
+  </svg>`;
+  wrap.innerHTML = svg;
+
+  const svgEl = document.getElementById(`dial-svg-${i}`);
+  svgEl.addEventListener('touchstart', e => onDialTap(e, i), { passive:false });
+  svgEl.addEventListener('click',      e => onDialTap(e, i));
+}
+
+function dialPt(cx, cy, r, deg) {
+  const rad = (deg - 90) * Math.PI / 180;
+  return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+}
+
+function describeArc(cx, cy, r, startDeg, endDeg) {
+  const diff = ((endDeg - startDeg) % 360 + 360) % 360;
+  if (diff < 0.5) return '';
+  if (diff >= 359.5) {
+    const [x1,y1] = dialPt(cx,cy,r,0);
+    return `M ${cx} ${cy} L ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r} ${r} 0 1 1 ${(x1-0.01).toFixed(2)} ${y1.toFixed(1)} Z`;
+  }
+  const [sx,sy] = dialPt(cx,cy,r,startDeg);
+  const [ex,ey] = dialPt(cx,cy,r,endDeg);
+  const large = diff > 180 ? 1 : 0;
+  return `M ${cx} ${cy} L ${sx.toFixed(1)} ${sy.toFixed(1)} A ${r} ${r} 0 ${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)} Z`;
+}
+
+function updateDialAngle(i, angle) {
+  const arc  = document.getElementById(`d-arc-${i}`);
+  const arcs = document.getElementById(`d-arc-s-${i}`);
+  const ptr  = document.getElementById(`d-ptr-${i}`);
+  const txt  = document.getElementById(`d-txt-${i}`);
+  if (!arc) return;
+
+  if (angle === null || angle === undefined) {
+    arc.setAttribute('d','');
+    arcs.setAttribute('d','');
+    ptr.setAttribute('x2', DIAL_C.toString());
+    ptr.setAttribute('y2', (DIAL_C - DIAL_R + 18).toString());
+    txt.textContent = '—';
+    return;
+  }
+
+  const [px,py] = dialPt(DIAL_C, DIAL_C, DIAL_R-18, angle);
+  ptr.setAttribute('x2', px.toFixed(1));
+  ptr.setAttribute('y2', py.toFixed(1));
+  arc.setAttribute('d',  describeArc(DIAL_C, DIAL_C, DIAL_R-8, 0, angle));
+  arcs.setAttribute('d', (() => {
+    const diff = ((angle - 0) % 360 + 360) % 360;
+    if (diff < 0.5) return '';
+    if (diff >= 359.5) {
+      const [x1,y1] = dialPt(DIAL_C,DIAL_C,DIAL_R-8,0);
+      return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${DIAL_R-8} ${DIAL_R-8} 0 1 1 ${(x1-0.01).toFixed(2)} ${y1.toFixed(1)}`;
+    }
+    const [sx,sy] = dialPt(DIAL_C,DIAL_C,DIAL_R-8,0);
+    const [ex,ey] = dialPt(DIAL_C,DIAL_C,DIAL_R-8,angle);
+    const large = diff>180?1:0;
+    return `M ${sx.toFixed(1)} ${sy.toFixed(1)} A ${DIAL_R-8} ${DIAL_R-8} 0 ${large} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+  })());
+  txt.textContent = angle.toFixed(1) + '°';
+}
+
+function updateDialTarget(i, angle) {
+  const tptr = document.getElementById(`d-tptr-${i}`);
+  const arr  = document.getElementById(`di-arr-${i}`);
+  const tgt  = document.getElementById(`di-tgt-${i}`);
+  if (!tptr) return;
+  if (angle === null || angle === undefined) {
+    tptr.setAttribute('display','none');
+    if (arr) arr.style.display = 'none';
+    if (tgt) tgt.style.display = 'none';
+    return;
+  }
+  const [tx,ty] = dialPt(DIAL_C, DIAL_C, DIAL_R-18, angle);
+  tptr.setAttribute('x2', tx.toFixed(1));
+  tptr.setAttribute('y2', ty.toFixed(1));
+  tptr.setAttribute('display','');
+  if (arr) arr.style.display = '';
+  if (tgt) { tgt.style.display=''; tgt.textContent = angle.toFixed(1)+'°'; }
+}
+
+function onDialTap(e, i) {
+  if (motorModes[i] !== 'goto') return;
+  e.preventDefault();
+  const svg  = document.getElementById(`dial-svg-${i}`);
+  const rect = svg.getBoundingClientRect();
+  const cx   = rect.left + rect.width  / 2;
+  const cy   = rect.top  + rect.height / 2;
+  const cX   = e.touches ? e.touches[0].clientX : e.clientX;
+  const cY   = e.touches ? e.touches[0].clientY : e.clientY;
+  let angle  = Math.atan2(cX - cx, -(cY - cy)) * 180 / Math.PI;
+  angle      = ((angle % 360) + 360) % 360;
+  motorTargets[i] = angle;
+  document.getElementById(`angle-inp-${i}`).value = angle.toFixed(1);
+  updateDialTarget(i, angle);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Library Page
+// ═══════════════════════════════════════════════════════════════════════════════
+// Motor library — free-text fields, no preset dropdowns
+
+function buildLibraryPage() {
+  const pg = document.getElementById('page-library');
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    html += `<div class="lib-slot" id="ls-${i}">
+      <div class="ls-header">
+        <div class="ls-idx">M${i+1}</div>
+        <div class="ls-title" id="lt-${i}">Motor ${i+1}</div>
+        <span class="badge" id="ls-badge-${i}">—</span>
+      </div>
+      <div class="lib-form">
+        <label>Label</label>
+        <input type="text" id="lf-label-${i}" maxlength="15" placeholder="e.g. X-Axis">
+        <label>Motor Model</label>
+        <input type="text" id="lf-motor-${i}" maxlength="20" placeholder="e.g. NEMA17">
+        <label>Driver Model</label>
+        <input type="text" id="lf-driver-${i}" maxlength="20" placeholder="e.g. TB6600">
+        <label>Steps / Revolution</label>
+        <input type="number" id="lf-steps-${i}" min="1" max="51200" step="1" placeholder="e.g. 3200">
+        <label>Current (A)</label>
+        <input type="number" id="lf-current-${i}" value="1.5" min="0.1" max="8" step="0.1">
+      </div>
+      <div class="lib-row">
+        <button class="save-btn" onclick="saveMotorConfig(${i})">Save</button>
+        ${i>0 ? `<button class="del-btn" onclick="removeMotor(${i})">Remove</button>` : ''}
+        ${i>0 ? `<button class="save-btn" style="background:var(--cyan)" onclick="addMotor(${i})">+ Activate</button>` : ''}
+      </div>
+    </div>`;
+  }
+  pg.innerHTML = html;
+}
+
+function updateLibraryPage() {
+  state.motors.forEach(m => {
+    const i = m.idx;
+    const inp = (id) => document.getElementById(id);
+    if (inp(`lf-label-${i}`) && !inp(`lf-label-${i}`).matches(':focus'))
+      inp(`lf-label-${i}`).value   = m.label;
+    if (inp(`lf-motor-${i}`))  inp(`lf-motor-${i}`).value  = m.motor;
+    if (inp(`lf-driver-${i}`)) inp(`lf-driver-${i}`).value = m.driver;
+    if (inp(`lf-steps-${i}`))  inp(`lf-steps-${i}`).value  = m.steps;
+    if (inp(`lf-current-${i}`)) inp(`lf-current-${i}`).value = m.current;
+    if (inp(`lt-${i}`))  inp(`lt-${i}`).textContent  = m.label;
+    if (inp(`ls-badge-${i}`)) {
+      inp(`ls-badge-${i}`).textContent = m.active ? 'Active' : 'Inactive';
+      inp(`ls-badge-${i}`).className   = 'badge ' + (m.active?'badge-run':'badge-idle');
+    }
+  });
+}
+
+async function saveMotorConfig(i) {
+  const body = {
+    label:   document.getElementById(`lf-label-${i}`)?.value || `M${i+1}`,
+    motor:   document.getElementById(`lf-motor-${i}`)?.value || '',
+    driver:  document.getElementById(`lf-driver-${i}`)?.value || '',
+    steps:   parseInt(document.getElementById(`lf-steps-${i}`)?.value || 3200),
+    current: parseFloat(document.getElementById(`lf-current-${i}`)?.value || 1.5)
+  };
+  const r = await api(`/api/config/${i}`, body);
+  if (r?.ok) showToast(`M${i+1} config saved ✓`);
+}
+async function addMotor(i) {
+  const r = await api(`/api/config/${i}`, { active: true });
+  if (r?.ok) showToast(`M${i+1} activated`);
+}
+async function removeMotor(i) {
+  if (!confirm(`Remove M${i+1}?`)) return;
+  const r = await api(`/api/config/${i}/remove`);
+  if (r?.ok) showToast(`M${i+1} removed`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Log Page
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildLogPage() {
+  const pg = document.getElementById('page-log');
+  pg.innerHTML = `
+    <div class="log-toolbar">
+      <button onclick="refreshLog()">↻ Refresh</button>
+      <button onclick="downloadLog()">⬇ Download</button>
+      <button id="log-rec-btn" onclick="toggleRecording()">⏺ Record</button>
+      <button onclick="clearLog()">🗑 Clear</button>
+    </div>
+    <div class="log-table-wrap">
+      <table class="log-table">
+        <thead><tr>
+          <th>Timestamp</th><th>Uptime</th><th>Action</th><th>Motor</th><th>Details</th>
+        </tr></thead>
+        <tbody id="log-body"><tr><td colspan="5" class="log-empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="log-size-info" id="log-size-info">—</div>`;
+}
+
+function parseCSVLine(line) {
+  const res = []; let cur='', inQ=false;
+  for (let i=0; i<line.length; i++) {
+    const c = line[i];
+    if (c==='"') { if (inQ && line[i+1]==='"') {cur+='"';i++;} else inQ=!inQ; }
+    else if (c===',' && !inQ) { res.push(cur); cur=''; }
+    else cur += c;
+  }
+  res.push(cur); return res;
+}
+
+async function refreshLog() {
+  const tbody = document.getElementById('log-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" class="log-empty">Loading…</td></tr>';
+  try {
+    const r = await fetch('/api/log?n=200');
+    if (!r.ok) { tbody.innerHTML='<tr><td colspan="5" class="log-empty">Error loading log</td></tr>'; return; }
+    const text = await r.text();
+    const lines = text.trim().split('\n').slice(1).filter(l=>l.trim());
+    if (!lines.length) { tbody.innerHTML='<tr><td colspan="5" class="log-empty">No entries yet</td></tr>'; return; }
+    tbody.innerHTML = lines.reverse().map(line => {
+      const cols = parseCSVLine(line);
+      const [ts='',up='',act='',motor='',det=''] = cols;
+      const cls = act.includes('estop')?'color:var(--err)':act.includes('test')?'color:var(--cyan)':
+                  act.includes('jog')?'color:var(--ylw)':act.includes('zero')?'color:var(--ok)':'';
+      return `<tr>
+        <td style="color:var(--mut)">${ts}</td>
+        <td style="color:var(--mut)">${up}</td>
+        <td class="log-action" style="${cls}">${act}</td>
+        <td style="font-weight:600">${motor}</td>
+        <td style="color:var(--txt2)">${det}</td>
+      </tr>`;
+    }).join('');
+  } catch { tbody.innerHTML='<tr><td colspan="5" class="log-empty">Connection error</td></tr>'; }
+  const si = document.getElementById('log-size-info');
+  if (si) si.textContent = `Log size: ${(state.log_size/1024).toFixed(1)} KB`;
+}
+
+function downloadLog() { window.location.href = '/api/log/download'; }
+async function clearLog() {
+  if (!confirm('Clear all log entries?')) return;
+  await api('/api/log/clear');
+  showToast('Log cleared');
+  refreshLog();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  Settings Page
+// ═══════════════════════════════════════════════════════════════════════════════
+function buildSettingsPage() {
+  const pg = document.getElementById('page-settings');
+  pg.innerHTML = `
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">Theme</div>
+        <div class="si-desc">Dark or light interface</div>
+      </div>
+      <button class="icon-btn" onclick="toggleTheme()">Toggle</button>
+    </div>
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">Log</div>
+        <div class="si-desc">Toggle recording of all motor events</div>
+      </div>
+      <label class="sw">
+        <input type="checkbox" id="settings-rec" onchange="onRecChange()">
+        <span class="sw-track"></span><span class="sw-thumb"></span>
+      </label>
+    </div>
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">WiFi Network</div>
+        <div class="si-desc">Access Point (standalone)</div>
+      </div>
+      <div class="si-val">MotionOS</div>
+    </div>
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">IP Address</div>
+        <div class="si-desc">Connect browser to this address</div>
+      </div>
+      <div class="si-val">192.168.4.1</div>
+    </div>
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">Time Sync</div>
+        <div class="si-desc">Browser-synced wall clock for log timestamps</div>
+      </div>
+      <div class="si-val" id="time-sync-status">—</div>
+    </div>
+    <div class="settings-item">
+      <div class="si-left">
+        <div class="si-label">Firmware</div>
+        <div class="si-desc">MotionOS v1.0.0 · ESP32</div>
+      </div>
+      <div class="si-val">v1.0.0</div>
+    </div>
+    <div style="margin-top:.75rem">
+      <button class="go-btn" onclick="doLogout()">Sign out</button>
+    </div>`;
+}
+
+function updateSettings() {
+  const ts = document.getElementById('time-sync-status');
+  if (ts) ts.textContent = state.time_synced ? '✓ Synced' : '— Not synced';
+  const sr = document.getElementById('settings-rec');
+  if (sr && !sr.matches(':active')) sr.checked = state.recording;
+}
+
+// ── Recording ─────────────────────────────────────────────────────────────────
+async function toggleRecording() {
+  const newVal = !state.recording;
+  await api('/api/log/record', { recording: newVal });
+}
+async function onRecChange() {
+  const en = document.getElementById('settings-rec')?.checked;
+  await api('/api/log/record', { recording: en });
+}
+function updateRecordingUI() {
+  const btn = document.getElementById('rec-btn');
+  if (btn) {
+    if (state.recording) {
+      btn.innerHTML = '<span class="rec-dot"></span>LOG';
+      btn.style.color = 'var(--err)';
+    } else {
+      btn.innerHTML = '⏺ LOG';
+      btn.style.color = '';
+    }
+  }
+  const logBtn = document.getElementById('log-rec-btn');
+  if (logBtn) {
+    if (state.recording) {
+      logBtn.innerHTML = '⏹ Stop Recording';
+      logBtn.style.color = 'var(--err)';
+      logBtn.style.borderColor = 'var(--err)';
+    } else {
+      logBtn.innerHTML = '⏺ Record';
+      logBtn.style.color = '';
+      logBtn.style.borderColor = '';
+    }
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────────────────────────
+async function doLogout() {
+  await fetch('/logout', { method:'POST' });
+  location.href = '/login';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Scroll strip (right-edge drag → scroll #main, bypasses pull-to-refresh) ──
+function initScrollStrip() {
+  const strip = document.getElementById('scroll-strip');
+  const main  = document.getElementById('main');
+  if (!strip || !main) return;
+  let startY = 0, startScroll = 0, active = false;
+
+  strip.addEventListener('touchstart', e => {
+    e.preventDefault();
+    active = true;
+    startY      = e.touches[0].clientY;
+    startScroll = main.scrollTop;
+  }, { passive: false });
+
+  strip.addEventListener('touchmove', e => {
+    if (!active) return;
+    e.preventDefault();
+    const dy = e.touches[0].clientY - startY;
+    // Scale: strip height maps to full scroll range
+    const stripH = strip.clientHeight;
+    const maxScroll = main.scrollHeight - main.clientHeight;
+    const ratio = maxScroll / (stripH || 1);
+    main.scrollTop = startScroll + dy * ratio;
+  }, { passive: false });
+
+  strip.addEventListener('touchend',    () => { active = false; });
+  strip.addEventListener('touchcancel', () => { active = false; });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
