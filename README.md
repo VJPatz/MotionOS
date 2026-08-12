@@ -51,7 +51,7 @@ Full wiring guide: [`docs/wiring.md`](docs/wiring.md)
 pip install platformio
 
 # 2. Clone
-git clone https://github.com/yourname/MotionOS
+git clone https://github.com/VJPatz/MotionOS.git
 cd MotionOS
 
 # 3. Set your credentials
